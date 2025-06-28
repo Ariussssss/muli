@@ -1,0 +1,13 @@
+.DS_Store
+node_modules
+*.log
+coverage
+.vscode
+output
+dist
+
+# Emacs
+*~
+\#*\#
+.\#*
+.ignore

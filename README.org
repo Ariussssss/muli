@@ -1,0 +1,6 @@
+#+STARTUP: all
+#+SETUPFILE: ~/.emacs.d/org-styles/html/main.theme
+#+TITLE: MULI
+#+DATE: [2025-06-28 09:34]
+
+[[file:assets/demo.png]]

@@ -1,0 +1,66 @@
+.tag
+  text-align left
+  cursor pointer
+  font-size 18px
+  white-space nowrap
+  margin-right 8px
+  min-width 200px
+  &__container
+    width 100%
+  &.is_focus,
+  &:hover
+    font-weight bold
+    color #f612ff
+  &.is_closed
+    display none
+  &s
+    position absolute
+    left 100px
+    top: 50%;
+    transform: translateY(-50%);
+    height auto
+    margin 0 auto
+    display flex
+    overflow hidden
+    padding 20px
+    width auto
+    flex-direction column
+    justify-content center
+    align-items center
+    z-index 10
+    opacity 1
+    color rgba(255,255,255, 0.2)
+    // background rgba(0, 0, 0, 0)
+    border-radius 4px
+    & *
+      transition color 0.2s, height 0.3s
+    &.is_focus
+      left 10px
+      color rgba(255,255,255, 0.5)
+      // background rgba(0, 0, 0, 0.5)
+      & .tag
+        font-size 36px
+        text-align center
+        padding 150px 0
+        &__container
+          display flex
+          align-items center
+          justify-content flex-end
+  &__song
+    cursor pointer
+    width auto
+    max-width 800px
+    font-size 18px
+    &.is_current,
+    &:hover
+      color #f612ff
+      font-weight bold
+  &__songs
+    overflow auto
+    &.is_focus
+      height 40vh
+      &::-webkit-scrollbar
+        display none
+    &.is_closed
+      height 0
+      width 0
