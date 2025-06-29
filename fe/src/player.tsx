@@ -1,17 +1,63 @@
 import { useEffect, useRef, useState } from 'react'
 import './style/player.styl'
-import { usePlaylist } from './hooks/use-playlist'
+import { PLAYMODE, usePlaylist } from './hooks/use-playlist'
+import { SERVER_HOST } from './const'
+import { useLog } from './hooks/use-log'
+import { getSongName } from './utils'
 
 interface PlayerProps {}
 
-const BAR_COUNT = 90
+const BAR_COUNT = 80
+
+let threshold = 128
+let gain = 1.2
+const smoothing = 0.2
+let smoothedData = new Array(128).fill(0)
+let lastBassLevel = 0
+let lastBeatTime = 0
+
+const modify = (a: Uint8Array) => {
+  return a
+  let aa = a
+  const b: number[] = []
+  const currentMax = Math.max(...aa)
+  threshold = threshold * 0.9 + currentMax * 0.1 * 0.6
+
+  const bassData = aa.slice(0, 2) // 前10个bin代表低频
+  const bassLevel = bassData.reduce((a, b) => a + b) / bassData.length
+  let beatMulti = gain
+
+  // 检测快速上升沿作为节拍
+  console.log(bassLevel, lastBassLevel, aa.slice(0, 4))
+  if (bassLevel > lastBassLevel * 1.5 && Date.now() - lastBeatTime > 100) {
+    lastBeatTime = Date.now()
+    console.log('beat', lastBeatTime)
+    beatMulti *= 2
+  }
+
+  lastBassLevel = bassLevel
+
+  for (let i = 0; i < aa.length; i++) {
+    smoothedData[i] = smoothedData[i] * smoothing + aa[i] * (1 - smoothing)
+    b[i] = Math.max(0, aa[i] * beatMulti - threshold)
+    // b[i] = smoothedData[i]  * beatMulti
+  }
+  return b
+}
+
 export const Player = ({}: PlayerProps) => {
   const ctx = usePlaylist()
-  const { currentSong, playNext } = ctx
-  const mediaSource = 'http://192.168.1.13:3210/stream' + currentSong
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [topBars, setTopBars] = useState(Array(BAR_COUNT / 2).fill(0.1))
-  const [bottomBars, setBottomBars] = useState(Array(BAR_COUNT / 2).fill(0.1))
+  const {
+    currentSong,
+    playNext,
+    currentMode,
+    isPlaying,
+    setIsPlaying,
+    socketRef,
+  } = ctx
+  const mediaSource = `${SERVER_HOST}/stream` + currentSong
+  const [topBars, setTopBars] = useState(Array(BAR_COUNT / 2).fill(0))
+  const [bottomBars, setBottomBars] = useState(Array(BAR_COUNT / 2).fill(0))
 
   const animationRef = useRef(0)
   const sourceRef = useRef<MediaElementAudioSourceNode>(null)
@@ -19,24 +65,6 @@ export const Player = ({}: PlayerProps) => {
   const audioRef = useRef<HTMLVideoElement>(null)
   const analyserRef = useRef<AnalyserNode>(null)
   const dataArrayRef = useRef<Uint8Array>(null)
-
-  const init = () => {
-    if (audioRef.current) {
-      audioRef.current.onplay = () => setIsPlaying(true)
-      audioRef.current.onpause = () => {
-        setIsPlaying(false)
-        cancelAnimationFrame(animationRef.current)
-      }
-      audioRef.current.volume = 0.1
-      audioContextRef.current = new window.AudioContext()
-      analyserRef.current = audioContextRef.current.createAnalyser()
-      analyserRef.current.fftSize = 256
-    }
-  }
-
-  useEffect(() => {
-    init()
-  }, [audioRef.current])
 
   const updateWaveform = () => {
     // console.log('analyserRef.current', analyserRef.current)
@@ -46,18 +74,18 @@ export const Player = ({}: PlayerProps) => {
       // Normalize and scale the data for visualization
       const newTopBars: number[] = []
       const newBottomBars: number[] = []
-      const step = Math.floor((dataArrayRef.current?.length ?? 0) / BAR_COUNT)
+      const afterArray = modify(dataArrayRef.current)
+      const step = Math.floor((afterArray.length ?? 0) / BAR_COUNT)
 
       for (let i = 0; i < BAR_COUNT; i++) {
         let value = 0
         for (let j = 0; j < step; j++) {
-          value += dataArrayRef.current?.[i + j] ?? 0
+          value += afterArray[i + j] ?? 0
         }
         value = value / step / 255
-        if (value > 0.3) {
-          value = Math.min(1, value * 1.5)
-        }
+
         if (i % 2 === 1) {
+          // if (i > BAR_COUNT / 2) {
           newTopBars.push(value)
         } else {
           newBottomBars.splice(0, 0, value)
@@ -72,7 +100,7 @@ export const Player = ({}: PlayerProps) => {
   }
 
   const handlePlay = () => {
-    // console.log({ sourceRef, audioContextRef, analyserRef, audioRef })
+    // console.log(sourceRef.current, audioContextRef.current, analyserRef.current, audioRef.current)
     if (sourceRef.current) {
       cancelAnimationFrame(animationRef.current)
       animationRef.current = requestAnimationFrame(updateWaveform)
@@ -92,18 +120,59 @@ export const Player = ({}: PlayerProps) => {
       dataArrayRef.current = new Uint8Array(
         analyserRef.current.frequencyBinCount
       )
-      animationRef.current = requestAnimationFrame(updateWaveform)
+      // animationRef.current = requestAnimationFrame(updateWaveform)
     }
   }
 
   useEffect(() => {
-    audioRef.current?.play().then(handlePlay)
+    audioRef.current?.play()
   }, [mediaSource])
-  
+
+  const { log } = useLog()
+
   const onEnded = () => {
     // console.log('onEnded')
-    playNext()
+    log(getSongName(currentSong))
+    if (currentMode === PLAYMODE.NORMAL) {
+      playNext()
+    } else {
+      audioRef.current?.play()
+    }
   }
+
+  const init = () => {
+    if (audioRef.current) {
+      audioRef.current.onplay = () => {
+        setIsPlaying(true)
+        setTimeout(handlePlay, 100)
+      }
+      audioRef.current.onpause = () => {
+        setIsPlaying(false)
+        cancelAnimationFrame(animationRef.current)
+      }
+      audioRef.current.volume = 0.1
+      audioContextRef.current = new window.AudioContext()
+      analyserRef.current = audioContextRef.current.createAnalyser()
+      analyserRef.current.fftSize = 256
+    }
+  }
+
+  useEffect(() => {
+    init()
+  }, [audioRef.current, setIsPlaying])
+
+  useEffect(() => {
+    socketRef.current?.on('toggle', () => {
+      if (audioRef.current?.paused) {
+        audioRef.current.play()
+      } else {
+        audioRef.current?.pause()
+      }
+    })
+    socketRef.current?.on('next', () => {
+      playNext()
+    })
+  }, [socketRef.current])
 
   // console.log(isPlaying)
   return (
@@ -114,8 +183,9 @@ export const Player = ({}: PlayerProps) => {
           if (isPlaying) {
             audioRef.current?.pause()
           } else {
-            audioRef.current?.play().then(handlePlay)
+            audioRef.current?.play()
           }
+        // debugger
       }}
       onWheel={(evt) => {
         if (audioRef.current) {
@@ -135,7 +205,7 @@ export const Player = ({}: PlayerProps) => {
     >
       <div className="player">
         <video
-          // controls
+          controls
           ref={audioRef}
           className="player"
           crossOrigin="anonymous"

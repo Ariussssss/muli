@@ -1,0 +1,15 @@
+@import './variables.styl'
+
+.mode-controller
+  position fixed
+  cursor pointer
+  right 60px
+  top 50%
+  transform translateY(-50%)
+  color rgba(255,255,255, 0.2)
+  transition all .3s
+  font-size 36px
+  z-index 3
+  &.is_active
+    color highlight
+

@@ -4,6 +4,7 @@ import './style/global.styl'
 import { Player } from './player'
 import { PlaylistContext, useInitPlaylist } from './hooks/use-playlist'
 import { Tags } from './tags'
+import { Mode } from './mode'
 // 
 // const Counter = () => {
 //   const [count, setCount] = useState(1)
@@ -25,6 +26,7 @@ const App = () => {
     <div className="muli">
       <PlaylistContext value={playlistContextValue}>
 	<Tags/>
+	<Mode />
 	<Player />
       </PlaylistContext>
     </div>

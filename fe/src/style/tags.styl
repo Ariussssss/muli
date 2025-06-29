@@ -1,3 +1,10 @@
+@import './variables.styl'
+
+@font-face
+  font-family T
+  font-style normal
+  src url(Netron-2.woff)
+
 .tag
   text-align left
   cursor pointer
@@ -5,19 +12,20 @@
   white-space nowrap
   margin-right 8px
   min-width 200px
+  font-family T
   &__container
     width 100%
   &.is_focus,
   &:hover
     font-weight bold
-    color #f612ff
+    color highlight
   &.is_closed
     display none
   &s
     position absolute
     left 100px
-    top: 50%;
-    transform: translateY(-50%);
+    top 50%
+    transform translateY(-50%)
     height auto
     margin 0 auto
     display flex
@@ -53,7 +61,7 @@
     font-size 18px
     &.is_current,
     &:hover
-      color #f612ff
+      color highlight
       font-weight bold
   &__songs
     overflow auto

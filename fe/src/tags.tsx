@@ -1,16 +1,32 @@
 import { Button, Menu, MenuProps } from 'antd'
 import { usePlaylist } from './hooks/use-playlist'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './style/tags.styl'
+import { getSongName } from './utils'
 
 type MenuItem = Required<MenuProps>['items'][number]
 
 interface TagsProps {}
 
 export const Tags = ({}: TagsProps) => {
-  const { musicMap, currentSong, currentTag, setCurrentTag, setCurrentIndex } =
-    usePlaylist()
+  const {
+    musicMap,
+    currentSong,
+    currentTag,
+    setCurrentTag,
+    setCurrentIndex,
+    socketRef,
+  } = usePlaylist()
   const [currentFocus, setCurrentFocus] = useState(currentTag)
+  const tagsElRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    socketRef.current?.on('playlist', ({ name }) => {
+      setCurrentFocus(name)
+      setCurrentTag(name)
+      setCurrentIndex(0)
+    })
+  }, [socketRef.current])
 
   const items = useMemo(() => {
     const res: MenuItem[] = []
@@ -20,23 +36,42 @@ export const Tags = ({}: TagsProps) => {
       res.push({
         key: tag,
         label: tag,
-        children: songs.map((key) => {
-	  let label: any = key.split('/').pop()
-	  label = label.split('.')
-	  label.pop()
-	  label = label.join('.')
-          return {
-            key,
-            label,
-          }
-        }),
+        children: songs.map((key) => ({
+          key,
+          label: getSongName(key),
+        })),
       })
     })
     return res
   }, [musicMap])
 
+  useEffect(() => {
+    let timer = setTimeout(() => {
+      if (
+        items
+          ?.find((e) => e?.key === currentFocus)
+          ?.children?.some((e) => e.key === currentSong)
+      ) {
+        const el = tagsElRef.current?.querySelector('.tag__song.is_current')
+        if (el) {
+          const container = el.parentNode
+          const scrollTo =
+            el?.offsetTop - container?.clientHeight / 2 - el?.clientHeight * 2
+
+          container?.scrollTo({
+            top: scrollTo,
+            behavior: 'smooth',
+          })
+        }
+      }
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [currentFocus])
+
   return (
-    <div className={`tags ${currentFocus ? 'is_focus' : ''}`}>
+    <div className={`tags ${currentFocus ? 'is_focus' : ''}`} ref={tagsElRef}>
       {items.map((e) => {
         let tagClass = ''
         if (currentFocus) {

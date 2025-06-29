@@ -52,6 +52,7 @@
     "antd": "^5.26.1",
     "normalize.css": "^8.0.1",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "socket.io-client": "^4.8.1"
   }
 }

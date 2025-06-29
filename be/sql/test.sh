@@ -10,6 +10,13 @@ LIMIT 10
 # SELECT * FROM PLAYLIST
 # LIMIT 10
 # "
+sql="
+SELECT datetime('now', '+8 hours')
+"
+sql="
+SELECT name, count(*) FROM LOG
+group by name
+"
 sqlite3 $(dirname $(realpath "$0"))/../muli.sqlite3.db <<EOF
 $sql
 EOF
