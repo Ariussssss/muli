@@ -53,7 +53,7 @@ export const Player = ({}: PlayerProps) => {
     currentMode,
     isPlaying,
     setIsPlaying,
-    socketRef,
+    socketOn,
   } = ctx
   const mediaSource = `${SERVER_HOST}/stream` + currentSong
   const [topBars, setTopBars] = useState(Array(BAR_COUNT / 2).fill(0))
@@ -99,30 +99,44 @@ export const Player = ({}: PlayerProps) => {
     }
   }
 
-  const handlePlay = () => {
-    // console.log(sourceRef.current, audioContextRef.current, analyserRef.current, audioRef.current)
-    if (sourceRef.current) {
-      cancelAnimationFrame(animationRef.current)
-      animationRef.current = requestAnimationFrame(updateWaveform)
-    } else if (
-      audioContextRef.current &&
-      analyserRef.current &&
-      audioRef.current
-    ) {
-      sourceRef.current =
-        sourceRef.current ??
-        audioContextRef.current.createMediaElementSource(audioRef.current)
-      sourceRef.current.disconnect()
-      sourceRef.current.connect(analyserRef.current)
-      analyserRef.current.disconnect()
-      analyserRef.current.connect(audioContextRef.current.destination)
+  useEffect(() => {
+    let timer = setTimeout(() => {
+      if (
+        isPlaying &&
+        audioContextRef.current &&
+        analyserRef.current &&
+        audioRef.current
+      ) {
+        if (sourceRef.current) {
+          cancelAnimationFrame(animationRef.current)
+          animationRef.current = requestAnimationFrame(updateWaveform)
+        } else if (
+          audioContextRef.current &&
+          analyserRef.current &&
+          audioRef.current
+        ) {
+          sourceRef.current =
+            sourceRef.current ??
+            audioContextRef.current.createMediaElementSource(audioRef.current)
+          sourceRef.current.disconnect()
+          sourceRef.current.connect(analyserRef.current)
+          analyserRef.current.disconnect()
+          analyserRef.current.connect(audioContextRef.current.destination)
 
-      dataArrayRef.current = new Uint8Array(
-        analyserRef.current.frequencyBinCount
-      )
-      // animationRef.current = requestAnimationFrame(updateWaveform)
+          dataArrayRef.current = new Uint8Array(
+            analyserRef.current.frequencyBinCount
+          )
+          animationRef.current = requestAnimationFrame(updateWaveform)
+        }
+      }
+    }, 100)
+    return () => {
+      clearTimeout(timer)
     }
-  }
+  }, [
+    isPlaying,
+    audioContextRef.current && analyserRef.current && audioRef.current,
+  ])
 
   useEffect(() => {
     audioRef.current?.play()
@@ -144,7 +158,6 @@ export const Player = ({}: PlayerProps) => {
     if (audioRef.current) {
       audioRef.current.onplay = () => {
         setIsPlaying(true)
-        setTimeout(handlePlay, 100)
       }
       audioRef.current.onpause = () => {
         setIsPlaying(false)
@@ -159,20 +172,18 @@ export const Player = ({}: PlayerProps) => {
 
   useEffect(() => {
     init()
+    return () => {}
   }, [audioRef.current, setIsPlaying])
 
-  useEffect(() => {
-    socketRef.current?.on('toggle', () => {
-      if (audioRef.current?.paused) {
-        audioRef.current.play()
-      } else {
-        audioRef.current?.pause()
-      }
-    })
-    socketRef.current?.on('next', () => {
-      playNext()
-    })
-  }, [socketRef.current])
+  socketOn('toggle', () =>
+    audioRef.current?.paused
+      ? audioRef.current.play()
+      : audioRef.current?.pause()
+  )
+
+  socketOn('next', () => {
+    playNext()
+  })
 
   // console.log(isPlaying)
   return (

@@ -167,10 +167,16 @@ def handle_register_device(message):
     device_id = data.get('device_id')
 
     if device_id:
-        target_sockets = [sid for sid, info in connected_clients.items() if info['device_id'] == device_id]
+        target_sockets = [
+            sid for sid, info in connected_clients.items() if 'device_id' in info and (info['device_id'] == device_id)
+        ]
         for sid in target_sockets:
             del connected_clients[sid]
-        connected_clients[socket_id] = {'device_id': device_id, 'ip': request.remote_addr, 'last_active': time.time()}
+        if socket_id not in connected_clients:
+            connected_clients[socket_id] = {}
+        connected_clients[socket_id]['device_id'] = device_id
+        connected_clients[socket_id]['ip'] = request.remote_addr
+        connected_clients[socket_id]['last_active'] = time.time()
         print(f"Device registered: {device_id} (Socket: {socket_id})")
         emit('registration_success', {'message': 'Device registered successfully'})
     else:
@@ -178,8 +184,17 @@ def handle_register_device(message):
 
 
 @socketio.on('heartbeat')
-def handle_heartbeat():
+def handle_heartbeat(message=''):
+    logger.debug(message)
     sid = request.sid
+    if isinstance(message, str):
+        data = json.loads(message)
+    else:
+        data = message
+        if 'song' in data:
+            if sid not in connected_clients:
+                connected_clients[sid] = {}
+            connected_clients[sid]['last_song'] = data['song']
     logger.debug(f'heartbeat {sid}')
     if sid in connected_clients:
         connected_clients[sid]['last_active'] = time.time()

@@ -2,7 +2,7 @@ import { Button, Menu, MenuProps } from 'antd'
 import { usePlaylist } from './hooks/use-playlist'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './style/tags.styl'
-import { getSongName } from './utils'
+import { getSongName, getTag } from './utils'
 
 type MenuItem = Required<MenuProps>['items'][number]
 
@@ -15,18 +15,27 @@ export const Tags = ({}: TagsProps) => {
     currentTag,
     setCurrentTag,
     setCurrentIndex,
-    socketRef,
+    socketOn,
   } = usePlaylist()
   const [currentFocus, setCurrentFocus] = useState(currentTag)
   const tagsElRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    socketRef.current?.on('playlist', ({ name }) => {
-      setCurrentFocus(name)
-      setCurrentTag(name)
-      setCurrentIndex(0)
-    })
-  }, [socketRef.current])
+  socketOn('playlist', ({ name }) => {
+    setCurrentFocus(name)
+    setCurrentTag(name)
+    setCurrentIndex(0)
+  })
+
+  socketOn(
+    'song',
+    ({ name }) => {
+      const tag = getTag(name)
+      setCurrentFocus(tag)
+      setCurrentTag(tag)
+      setCurrentIndex(musicMap?.[tag]?.indexOf(name))
+    },
+    [musicMap]
+  )
 
   const items = useMemo(() => {
     const res: MenuItem[] = []
@@ -56,7 +65,7 @@ export const Tags = ({}: TagsProps) => {
         if (el) {
           const container = el.parentNode
           const scrollTo =
-            el?.offsetTop - container?.clientHeight / 2 - el?.clientHeight * 2
+            el?.offsetTop - container?.clientHeight / 2 - el?.clientHeight / 2
 
           container?.scrollTo({
             top: scrollTo,
@@ -68,7 +77,7 @@ export const Tags = ({}: TagsProps) => {
     return () => {
       clearTimeout(timer)
     }
-  }, [currentFocus])
+  }, [currentSong, currentFocus])
 
   return (
     <div className={`tags ${currentFocus ? 'is_focus' : ''}`} ref={tagsElRef}>
@@ -111,6 +120,7 @@ export const Tags = ({}: TagsProps) => {
                     </div>
                   ))
                 : null}
+              <div style={{ height: '40vh', width: '100%' }} />
             </div>
           </div>
         )

@@ -2,6 +2,7 @@
 # @Author: Arius
 # @Email: arius@qq.com
 # @Date:   2025-06-24
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -40,6 +41,14 @@ def load():
                 cursor.execute(sql)
         cursor.close()
         conn.commit()
+
+
+def move(target, playlist):
+    if not target.startswith(SONG_DIR):
+        target = SONG_DIR + target
+    new_dir = f'{SONG_DIR}/{playlist}'
+    shutil.move(target, new_dir)
+    load()
 
 
 def main():

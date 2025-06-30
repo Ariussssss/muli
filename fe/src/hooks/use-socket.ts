@@ -46,17 +46,35 @@ export const useSocket = ({
     newSocket.on('registration_success', (data) => {
       console.log('Device registration success:', data)
     })
-    
+
     return () => {
-      clearInterval(heartbeatInterval)
+      clearInterval(heartbeatInterval.current)
     }
   }, [])
 
-  const heartbeat = () => {
-    socketRef.current.emit('heartbeat')
+  const heartbeat = (msg = {}) => {
+    const hb = () => {
+      console.log('hb', socketRef.current?.active, { msg })
+      if (!socketRef.current?.active) return setTimeout(hb, 300)
+      clearInterval(heartbeatInterval.current)
+      socketRef.current?.emit('heartbeat', msg)
+      heartbeatInterval.current = setInterval(() => {
+        if (socketRef.current?.connected) {
+          socketRef.currentg?.emit('heartbeat')
+        }
+      }, 20000) // Send every 20 seconds
+    }
+    hb()
   }
+
+  const socketOn = (key: string, func: () => void, deps = []) => {
+    return useEffect(() => {
+      socketRef.current?.on(key, func)
+    }, [socketRef.current, ...deps])
+  }
+
   return {
     heartbeat,
-    socketRef
+    socketOn,
   }
 }

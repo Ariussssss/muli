@@ -10,6 +10,7 @@ import {
 import { useLocal } from './use-local'
 import { useSocket } from './use-socket'
 import { Socket } from 'socket.io-client'
+import { getTag } from '../utils'
 
 export enum PLAYMODE {
   NORMAL,
@@ -26,21 +27,13 @@ interface IPlaylistContext {
   setCurrentMode: (t: PLAYMODE) => void
   isPlaying: boolean
   setIsPlaying: (t: boolean) => void
-  socketRef: RefObject<Socket | null>
+  socketOn: (k: string, f: () => void, deps?: any[]) => void
+  heartbeat: (d?: Map<string, any>) => void
+  currentList: string[]
+  currentSong: string
 }
 
-export const PlaylistContext = createContext({
-  musicMap: {},
-  currentTag: '',
-  setCurrentTag: () => null,
-  currentIndex: 0,
-  setCurrentIndex: () => null,
-  currentMode: 0,
-  setCurrentMode: () => null,
-  isPlaying: false,
-  setIsplaying: () => null,
-  socketRef: null,
-} as IPlaylistContext)
+export const PlaylistContext = createContext({} as IPlaylistContext)
 
 export const shuffleArray = (array: any[]) => {
   for (var i = array.length - 1; i > 0; i--) {
@@ -71,24 +64,38 @@ export const useInitPlaylist = () => {
   const [currentIndex, setCurrentIndex] = useState(last.currentIndex)
   const [currentMode, setCurrentMode] = useState(last.currentMode)
 
-  const { heartbeat, socketRef } = useSocket({ device: last.device })
+  const { heartbeat, socketOn } = useSocket({ device: last.device })
 
-  useEffect(() => {
-    if (isPlaying) {
-      heartbeat()
-    }
-  }, [isPlaying])
+  socketOn('refresh', () => {
+    setLastDownload({ timestamp: 0 })
+    setTimeout(() => window.location.reload(), 500)
+  })
 
   const musicMap = useMemo(
     () =>
       allDownloads.reduce((a: IPlaylistContext['musicMap'], b: string) => {
-        const tag = b.split('/')[1]
+        const tag = getTag(b)
         a[tag] = a?.[tag] ?? []
         a[tag].push(b)
         return a
       }, {}),
     []
   )
+
+  const currentList = useMemo(
+    () =>
+      (musicMap?.[currentTag] ?? Object.values(musicMap).flat()) as string[],
+    [currentTag]
+  )
+
+  const currentSong = useMemo(
+    () => currentList[currentIndex],
+    [currentList, currentIndex]
+  )
+
+  useEffect(() => {
+    heartbeat({ song: currentSong })
+  }, [currentSong])
 
   useEffect(() => {
     let { device } = last
@@ -105,6 +112,7 @@ export const useInitPlaylist = () => {
      *   lastDownload.timestamp,
      *   current - lastDownload?.timestamp ?? 0
      * ) */
+
     if ((current - lastDownload?.timestamp ?? 0) > 1000 * 3600 * 24) {
       fetch('http://192.168.1.13:3210/api/all').then((e) => {
         e.json().then((res) => {
@@ -113,6 +121,9 @@ export const useInitPlaylist = () => {
             setLastDownload({ timestamp: current })
           }
         })
+        if (!lastDownload.timestamp) {
+          window.location.reload()
+        }
       })
     }
   }, [])
@@ -127,40 +138,21 @@ export const useInitPlaylist = () => {
     setCurrentMode,
     isPlaying,
     setIsPlaying,
-    socketRef,
+    socketOn,
+    currentList,
+    currentSong,
   } as IPlaylistContext
 }
 
 export const usePlaylist = () => {
   const ctx = useContext(PlaylistContext)
-  const {
-    musicMap,
-    currentTag,
-    currentIndex,
-    setCurrentIndex,
-    setCurrentTag,
-    currentMode,
-    setCurrentMode,
-  } = ctx
-
-  const currentList = useMemo(
-    () =>
-      (musicMap?.[currentTag] ?? Object.values(musicMap).flat()) as string[],
-    [currentTag]
-  )
-
-  const currentSong = useMemo(
-    () => currentList[currentIndex],
-    [currentList, currentIndex]
-  )
+  const { currentList, setCurrentIndex } = ctx
   /* console.log({ musicMap, currentTag, currentList, currentIndex, currentSong }) */
 
   const playNext = () => setCurrentIndex((e) => (e + 1) % currentList.length)
 
   return {
     ...ctx,
-    currentList,
-    currentSong,
     playNext,
   }
 }

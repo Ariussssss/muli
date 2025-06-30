@@ -8,6 +8,9 @@ import sys
 
 import requests
 
+from muli import logger
+from muli.local import move
+
 
 def all_device():
     res = requests.get('http://127.0.0.1:3210/api/connected_devices')
@@ -15,14 +18,20 @@ def all_device():
     return res.json()
 
 
-def msg_to_last(msg):
+def get_last():
     res = all_device()
     m = 0
     target = None
     for _sid, d in res['devices'].items():
         if d['last_active'] > m:
             m = d['last_active']
-            target = d['device_id']
+            target = d
+    return target
+
+
+def msg_to_last(msg):
+    target = get_last()
+    target = target['device_id']
     if target:
         r = requests.post('http://127.0.0.1:3210/api/send_signal', json={"device_ids": [target], "signal": msg})
         print(json.dumps(r.json(), indent=2))
@@ -43,6 +52,20 @@ def next():
 def ap(playlist):
     if not msg_to_last({'task': 'playlist', 'name': playlist}):
         os.system(f'emacsclient -e "(with-current-buffer emms-playlist-buffer (arz/do-emms-load-type \"{playlist}\"))"')
+
+
+def fav(playlist):
+    target = get_last()
+    if target:
+        device_id = target['device_id']
+        if 'last_song' in target:
+            last_song = target['last_song']
+            logger.debug(last_song)
+            move(last_song, playlist)
+        r = requests.post(
+            'http://127.0.0.1:3210/api/send_signal', json={"device_ids": [device_id], "signal": {'task': 'refresh'}}
+        )
+        print(json.dumps(r.json(), indent=2))
 
 
 def main():
