@@ -216,7 +216,7 @@ export const Player = ({}: PlayerProps) => {
     >
       <div className="player">
         <video
-          controls
+          // controls
           ref={audioRef}
           className="player"
           crossOrigin="anonymous"
