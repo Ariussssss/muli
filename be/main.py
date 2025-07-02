@@ -24,6 +24,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", json=json)
 cleanup_thread = None
 cleanup_event = Event()
+inactive_threshold = 60  # 1 minute without activity
 CORS(app, origin='*')
 connected_clients = {}
 MEDIA_FOLDER = '/home/arius/Music/Spotify'
@@ -187,6 +188,7 @@ def handle_register_device(message):
 def handle_heartbeat(message=''):
     logger.debug(message)
     sid = request.sid
+    last_active = time.time()
     if isinstance(message, str):
         data = json.loads(message)
     else:
@@ -195,9 +197,10 @@ def handle_heartbeat(message=''):
             if sid not in connected_clients:
                 connected_clients[sid] = {}
             connected_clients[sid]['last_song'] = data['song']
+            last_active += inactive_threshold
     logger.debug(f'heartbeat {sid}')
     if sid in connected_clients:
-        connected_clients[sid]['last_active'] = time.time()
+        connected_clients[sid]['last_active'] = max(connected_clients[sid].get('last_active', 0), last_active)
         emit('heartbeat_ack')
 
 
@@ -234,8 +237,10 @@ def cleanup_inactive_clients():
     """Background thread to remove inactive clients"""
     while not cleanup_event.is_set():
         current_time = time.time()
-        inactive_threshold = 60  # 1 minute without activity
 
+        for sid, client in connected_clients.items():
+            if 'last_active' in client:
+                logger.debug(f"{client['device_id']} {current_time - client['last_active']}")
         # Find inactive clients
         inactive_clients = [
             sid

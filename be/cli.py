@@ -49,6 +49,11 @@ def next():
         os.system('emacsclient -e "(emms-next)"')
 
 
+def previous():
+    if not msg_to_last({'task': 'previous'}):
+        os.system('emacsclient -e "(emms-previous)"')
+
+
 def ap(playlist):
     if not msg_to_last({'task': 'playlist', 'name': playlist}):
         os.system(f'emacsclient -e "(with-current-buffer emms-playlist-buffer (arz/do-emms-load-type \"{playlist}\"))"')
@@ -66,6 +71,11 @@ def fav(playlist):
             'http://127.0.0.1:3210/api/send_signal', json={"device_ids": [device_id], "signal": {'task': 'refresh'}}
         )
         print(json.dumps(r.json(), indent=2))
+
+
+def lp():
+    if not msg_to_last({'task': 'loop'}):
+        os.system('emacsclient -e "(emms-toggle-repeat-track)"')
 
 
 def main():

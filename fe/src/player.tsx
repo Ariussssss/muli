@@ -54,6 +54,7 @@ export const Player = ({}: PlayerProps) => {
     isPlaying,
     setIsPlaying,
     socketOn,
+    playPrevious,
   } = ctx
   const mediaSource = `${SERVER_HOST}/stream` + currentSong
   const [topBars, setTopBars] = useState(Array(BAR_COUNT / 2).fill(0))
@@ -183,6 +184,10 @@ export const Player = ({}: PlayerProps) => {
 
   socketOn('next', () => {
     playNext()
+  })
+
+  socketOn('previous', () => {
+    playPrevious()
   })
 
   // console.log(isPlaying)

@@ -76,7 +76,9 @@ export const useInitPlaylist = () => {
       allDownloads.reduce((a: IPlaylistContext['musicMap'], b: string) => {
         const tag = getTag(b)
         a[tag] = a?.[tag] ?? []
+        a['all'] = a?.['all'] ?? []
         a[tag].push(b)
+        a['all'].push(b)
         return a
       }, {}),
     []
@@ -150,9 +152,11 @@ export const usePlaylist = () => {
   /* console.log({ musicMap, currentTag, currentList, currentIndex, currentSong }) */
 
   const playNext = () => setCurrentIndex((e) => (e + 1) % currentList.length)
+  const playPrevious = () => setCurrentIndex((e) => (e - 1) % currentList.length)
 
   return {
     ...ctx,
     playNext,
+    playPrevious
   }
 }

@@ -25,12 +25,6 @@ export const useSocket = ({
     })
     socketRef.current = newSocket
 
-    heartbeatInterval.current = setInterval(() => {
-      if (newSocket.connected) {
-        newSocket.emit('heartbeat')
-      }
-    }, 20000) // Send every 20 seconds
-
     // Connection events
     newSocket.on('connect', () => {
       console.log('Connected to server')
@@ -46,10 +40,6 @@ export const useSocket = ({
     newSocket.on('registration_success', (data) => {
       console.log('Device registration success:', data)
     })
-
-    return () => {
-      clearInterval(heartbeatInterval.current)
-    }
   }, [])
 
   const heartbeat = (msg = {}) => {
@@ -60,9 +50,9 @@ export const useSocket = ({
       socketRef.current?.emit('heartbeat', msg)
       heartbeatInterval.current = setInterval(() => {
         if (socketRef.current?.connected) {
-          socketRef.currentg?.emit('heartbeat')
+          socketRef.current?.emit('heartbeat', {})
         }
-      }, 20000) // Send every 20 seconds
+      }, 10 * 1000)
     }
     hb()
   }
