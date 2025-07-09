@@ -68,7 +68,7 @@ export const useInitPlaylist = () => {
 
   socketOn('refresh', () => {
     setLastDownload({ timestamp: 0 })
-    setTimeout(() => window.location.reload(), 500)
+    /* setTimeout(() => window.location.reload(), 500) */
   })
 
   const musicMap = useMemo(
@@ -115,7 +115,7 @@ export const useInitPlaylist = () => {
      *   current - lastDownload?.timestamp ?? 0
      * ) */
 
-    if ((current - lastDownload?.timestamp ?? 0) > 1000 * 3600 * 24) {
+    if (current - (lastDownload?.timestamp ?? 0) > 1000 * 3600 * 24) {
       fetch('http://192.168.1.13:3210/api/all').then((e) => {
         e.json().then((res) => {
           if (res?.['downloads']) {
@@ -124,7 +124,7 @@ export const useInitPlaylist = () => {
           }
         })
         if (!lastDownload.timestamp) {
-          window.location.reload()
+          /* window.location.reload() */
         }
       })
     }
@@ -152,11 +152,12 @@ export const usePlaylist = () => {
   /* console.log({ musicMap, currentTag, currentList, currentIndex, currentSong }) */
 
   const playNext = () => setCurrentIndex((e) => (e + 1) % currentList.length)
-  const playPrevious = () => setCurrentIndex((e) => (e - 1) % currentList.length)
+  const playPrevious = () =>
+    setCurrentIndex((e) => (e - 1) % currentList.length)
 
   return {
     ...ctx,
     playNext,
-    playPrevious
+    playPrevious,
   }
 }

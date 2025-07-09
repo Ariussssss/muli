@@ -4,6 +4,7 @@ import { PLAYMODE, usePlaylist } from './hooks/use-playlist'
 import { SERVER_HOST } from './const'
 import { useLog } from './hooks/use-log'
 import { getSongName } from './utils'
+import { Progress, notification } from 'antd'
 
 interface PlayerProps {}
 
@@ -173,7 +174,21 @@ export const Player = ({}: PlayerProps) => {
 
   useEffect(() => {
     init()
-    return () => {}
+    let f = (evt: KeyboardEvent) => {
+      if (evt.key === 'n') {
+        playNext()
+      } else if (evt.key === 'p') {
+        playPrevious()
+      } else if (evt.key === ' ') {
+        audioRef.current?.paused
+          ? audioRef.current.play()
+          : audioRef.current?.pause()
+      }
+    }
+    document.body.addEventListener('keyup', f)
+    return () => {
+      document.body.removeEventListener('keyup', f)
+    }
   }, [audioRef.current, setIsPlaying])
 
   socketOn('toggle', () =>
@@ -205,54 +220,68 @@ export const Player = ({}: PlayerProps) => {
       }}
       onWheel={(evt) => {
         if (audioRef.current) {
+          let volume = audioRef.current.volume
           if (evt.deltaY > 0) {
-            audioRef.current.volume = Math.max(
-              0,
-              audioRef.current.volume - 0.05
-            )
+            volume = Math.max(0, volume - 0.05)
           } else {
-            audioRef.current.volume = Math.min(
-              1,
-              audioRef.current.volume + 0.05
-            )
+            volume = Math.min(1, volume + 0.05)
           }
         }
       }}
     >
-      <div className="player">
+    <div className="player">
+      <div className="video">
         <video
           // controls
           ref={audioRef}
-          className="player"
           crossOrigin="anonymous"
           onEnded={onEnded}
           src={mediaSource}
         />
+        <Progress
+	  key={mediaSource}
+          className="progress"
+          strokeColor={{
+            '0%': '#4b6cb7',
+            '100%': '#f612ff',
+          }}
+          size={{
+            height: 20,
+          }}
+          showInfo={false}
+          percent={
+          (audioRef.current
+          ? audioRef.current.currentTime / audioRef.current.duration
+          : 0) * 100
+          }
+          status="active"
+        />
       </div>
-      <div className="waveform top">
-        {topBars.map((height, index) => (
-          <div
-            key={`${index}-${height}`}
-            className="wave-bar"
-            style={{
-              height: `${height * 100}%`,
-              backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
-            }}
-          />
-        ))}
-      </div>
-      <div className="waveform bottom">
-        {bottomBars.map((height, index) => (
-          <div
-            key={`${index}-${height}`}
-            className="wave-bar"
-            style={{
-              height: `${height * 100}%`,
-              backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
-            }}
-          />
-        ))}
-      </div>
+    </div>
+    <div className="waveform top">
+      {topBars.map((height, index) => (
+        <div
+          key={`${index}-${height}`}
+          className="wave-bar"
+          style={{
+            height: `${height * 100}%`,
+            backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
+          }}
+        />
+      ))}
+    </div>
+    <div className="waveform bottom">
+      {bottomBars.map((height, index) => (
+        <div
+          key={`${index}-${height}`}
+          className="wave-bar"
+          style={{
+            height: `${height * 100}%`,
+            backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
+          }}
+        />
+      ))}
+    </div>
     </div>
   )
 }

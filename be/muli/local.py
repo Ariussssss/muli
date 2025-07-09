@@ -2,11 +2,14 @@
 # @Author: Arius
 # @Email: arius@qq.com
 # @Date:   2025-06-24
+import os
 import shutil
 import sqlite3
 import subprocess
 import sys
+from os.path import isfile
 
+from muli import logger
 from muli.controller import SQLITE_FILE_PATH
 from muli.utils import encode_sqlite
 
@@ -41,6 +44,7 @@ def load():
                 cursor.execute(sql)
         cursor.close()
         conn.commit()
+    logger.debug('Muli reload done.')
 
 
 def move(target, playlist):
@@ -51,8 +55,62 @@ def move(target, playlist):
     load()
 
 
+def convert_to_mp4_nvenc(input_file, output_file):
+    cmd = [
+        'ffmpeg',
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-stats",
+        "-xerror",
+        '-y',  # overwrite
+        '-i',
+        input_file,
+        '-c:v',
+        'h264_nvenc',
+        '-rc',
+        'vbr',
+        '-cq',
+        '19',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '192k',
+        output_file,
+    ]
+    subprocess.run(cmd, check=True)
+
+
+def format_mp4():
+    command = f"fd -t f -i 'webm' {SONG_DIR}"
+    result = subprocess.run(
+        command,
+        shell=True,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    )
+    songs = [s.strip() for s in result.stdout.split('\n') if s.strip() and s.endswith('.webm')]
+    l = len(songs)
+    for i, song in enumerate(songs):
+        print(f"{str(i).zfill(4)}/{l}", song)
+        target = song.replace('.webm', '.mp4')
+        target = target.replace('/home/arius', '/mnt/arch-8T')
+        if os.path.isfile(target):
+            # print('del', target)
+            # os.remove(target)
+            continue
+        else:
+            d = os.path.dirname(target)
+            print(d)
+            os.makedirs(d, exist_ok=True)
+            convert_to_mp4_nvenc(song, target)
+            pass
+
+
 def main():
-    load()
+    # load()
+    format_mp4()
     pass
 
 
