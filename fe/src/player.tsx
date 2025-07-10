@@ -67,6 +67,7 @@ export const Player = ({}: PlayerProps) => {
   const audioRef = useRef<HTMLVideoElement>(null)
   const analyserRef = useRef<AnalyserNode>(null)
   const dataArrayRef = useRef<Uint8Array>(null)
+  const playerBgRef = useRef<HTMLCanvasElement>(null)
 
   const updateWaveform = () => {
     // console.log('analyserRef.current', analyserRef.current)
@@ -140,8 +141,46 @@ export const Player = ({}: PlayerProps) => {
     audioContextRef.current && analyserRef.current && audioRef.current,
   ])
 
+  const drawBg = () => {
+    if (playerBgRef.current && audioRef.current) {
+      const ctx = playerBgRef.current.getContext('2d')
+      playerBgRef.current.width = window.innerWidth
+      playerBgRef.current.height = window.innerHeight
+      const rect = audioRef.current.getBoundingClientRect()
+      if (window.innerHeight > window.innerWidth) {
+        const w = (window.innerHeight / rect.height) * rect.width
+        ctx?.drawImage(
+          audioRef.current,
+          window.innerWidth / 2 - w / 2,
+          0,
+          w,
+          window.innerHeight
+        )
+      } else {
+        const h = (window.innerWidth / rect.width) * rect.height
+        ctx?.drawImage(
+          audioRef.current,
+          0,
+          window.innerHeight / 2 - h / 2,
+          window.innerWidth,
+          h
+        )
+      }
+    }
+  }
+
   useEffect(() => {
     audioRef.current?.play()
+    let timer = 0
+    let f = () => {
+      timer = setTimeout(drawBg, 300)
+    }
+    f()
+    window.addEventListener('resize', f)
+    return () => {
+      window.removeEventListener('resize', f)
+      clearTimeout(timer)
+    }
   }, [mediaSource])
 
   const { log } = useLog()
@@ -229,59 +268,75 @@ export const Player = ({}: PlayerProps) => {
         }
       }}
     >
-    <div className="player">
-      <div className="video">
-        <video
-          // controls
-          ref={audioRef}
-          crossOrigin="anonymous"
-          onEnded={onEnded}
-          src={mediaSource}
-        />
-        <Progress
-	  key={mediaSource}
-          className="progress"
-          strokeColor={{
-            '0%': '#4b6cb7',
-            '100%': '#f612ff',
-          }}
-          size={{
-            height: 20,
-          }}
-          showInfo={false}
-          percent={
-          (audioRef.current
-          ? audioRef.current.currentTime / audioRef.current.duration
-          : 0) * 100
-          }
-          status="active"
-        />
+      <div className="player__bg">
+        <canvas ref={playerBgRef} />
+        <div className="player__bg--glass" />
       </div>
-    </div>
-    <div className="waveform top">
-      {topBars.map((height, index) => (
-        <div
-          key={`${index}-${height}`}
-          className="wave-bar"
-          style={{
-            height: `${height * 100}%`,
-            backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
-          }}
-        />
-      ))}
-    </div>
-    <div className="waveform bottom">
-      {bottomBars.map((height, index) => (
-        <div
-          key={`${index}-${height}`}
-          className="wave-bar"
-          style={{
-            height: `${height * 100}%`,
-            backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
-          }}
-        />
-      ))}
-    </div>
+
+      <div className="player">
+        <div className="video">
+          <video
+            // controls
+            ref={audioRef}
+            crossOrigin="anonymous"
+            onEnded={onEnded}
+            src={mediaSource}
+          />
+          <Progress
+            key={mediaSource}
+            className="progress"
+            strokeColor={{
+              '0%': '#4b6cb7',
+              '100%': '#f612ff',
+            }}
+            size={{
+              height: 20,
+            }}
+            showInfo={false}
+            onClick={(evt) => {
+              const rect =
+                audioRef.current?.parentElement.getBoundingClientRect()
+              const offsetX = evt.clientX - rect.left
+              const percent = offsetX / rect.width
+              // debugger
+              if (audioRef.current) {
+                audioRef.current.currentTime =
+                  audioRef.current.duration * percent
+              }
+            }}
+            percent={Math.floor(
+              (audioRef.current
+                ? audioRef.current.currentTime / audioRef.current.duration
+                : 0) * 100
+            )}
+            status="active"
+          />
+        </div>
+      </div>
+      <div className="waveform top">
+        {topBars.map((height, index) => (
+          <div
+            key={`${index}-${height}`}
+            className="wave-bar"
+            style={{
+              height: `${height * 100}%`,
+              backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
+            }}
+          />
+        ))}
+      </div>
+      <div className="waveform bottom">
+        {bottomBars.map((height, index) => (
+          <div
+            key={`${index}-${height}`}
+            className="wave-bar"
+            style={{
+              height: `${height * 100}%`,
+              backgroundColor: `hsl(${height * 120 + 200}, 100%, 50%)`,
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }

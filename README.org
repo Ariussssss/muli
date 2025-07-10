@@ -3,5 +3,5 @@
 #+TITLE: MULI
 #+DATE: [2025-06-28 09:34]
 
-[[file:assets/demo.png]]
+[[file:assets/screenshot_10072025_085321.jpg]]
 
