@@ -28,11 +28,13 @@ export const Tags = ({}: TagsProps) => {
 
   socketOn(
     'song',
-    ({ name }) => {
+    ({ name }: { name: string }) => {
       const tag = getTag(name)
       setCurrentFocus(tag)
       setCurrentTag(tag)
-      setCurrentIndex(musicMap?.[tag]?.indexOf(name))
+      setCurrentIndex(
+        musicMap?.[tag]?.indexOf(musicMap?.[tag]?.find((e) => e.includes(name)))
+      )
     },
     [musicMap]
   )

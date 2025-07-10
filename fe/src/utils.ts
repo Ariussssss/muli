@@ -7,5 +7,11 @@ export const getSongName = (song: string) => {
 }
 
 export const getTag = (url: string) => {
-  return url.split('/')[1] as string
+  return url.replace('/mnt/arch-8T/Music/Spotify', '').split('/')[1] as string
 }
+
+export const isIOS = () => (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+

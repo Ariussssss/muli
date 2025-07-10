@@ -13,7 +13,8 @@ from muli import logger
 from muli.controller import SQLITE_FILE_PATH
 from muli.utils import encode_sqlite
 
-SONG_DIR = "/home/arius/Music/Spotify"
+# SONG_DIR = "/home/arius/Music/Spotify"
+SONG_DIR = "/mnt/arch-8T/Music/Spotify"
 
 
 def load():
@@ -99,6 +100,7 @@ def format_mp4():
         if os.path.isfile(target):
             # print('del', target)
             # os.remove(target)
+            os.remove(song)
             continue
         else:
             d = os.path.dirname(target)

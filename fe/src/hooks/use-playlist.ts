@@ -27,7 +27,7 @@ interface IPlaylistContext {
   setCurrentMode: (t: PLAYMODE) => void
   isPlaying: boolean
   setIsPlaying: (t: boolean) => void
-  socketOn: (k: string, f: () => void, deps?: any[]) => void
+  socketOn: (k: string, f: (s: Map<string, any>) => void, deps?: any[]) => void
   heartbeat: (d?: Map<string, any>) => void
   currentList: string[]
   currentSong: string
@@ -115,6 +115,7 @@ export const useInitPlaylist = () => {
      *   current - lastDownload?.timestamp ?? 0
      * ) */
 
+    /* if (true) { */
     if (current - (lastDownload?.timestamp ?? 0) > 1000 * 3600 * 24) {
       fetch('http://192.168.1.13:3210/api/all').then((e) => {
         e.json().then((res) => {
@@ -153,7 +154,7 @@ export const usePlaylist = () => {
 
   const playNext = () => setCurrentIndex((e) => (e + 1) % currentList.length)
   const playPrevious = () =>
-    setCurrentIndex((e) => (e - 1) % currentList.length)
+    setCurrentIndex((e) => (e + currentList.length - 1) % currentList.length)
 
   return {
     ...ctx,

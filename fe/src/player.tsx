@@ -3,7 +3,7 @@ import './style/player.styl'
 import { PLAYMODE, usePlaylist } from './hooks/use-playlist'
 import { SERVER_HOST } from './const'
 import { useLog } from './hooks/use-log'
-import { getSongName } from './utils'
+import { getSongName, isIOS } from './utils'
 import { Progress, notification } from 'antd'
 
 interface PlayerProps {}
@@ -170,7 +170,9 @@ export const Player = ({}: PlayerProps) => {
   }
 
   useEffect(() => {
-    audioRef.current?.play()
+    if (audioRef.current?.readyIOS || !isIOS()){
+      audioRef.current?.play()
+    }
     let timer = 0
     let f = () => {
       timer = setTimeout(drawBg, 300)
@@ -198,7 +200,8 @@ export const Player = ({}: PlayerProps) => {
   const init = () => {
     if (audioRef.current) {
       audioRef.current.onplay = () => {
-        setIsPlaying(true)
+	audioRef.current.readyIOS = true
+	setIsPlaying(true)
       }
       audioRef.current.onpause = () => {
         setIsPlaying(false)
@@ -214,19 +217,65 @@ export const Player = ({}: PlayerProps) => {
   useEffect(() => {
     init()
     let f = (evt: KeyboardEvent) => {
-      if (evt.key === 'n') {
-        playNext()
-      } else if (evt.key === 'p') {
-        playPrevious()
-      } else if (evt.key === ' ') {
-        audioRef.current?.paused
-          ? audioRef.current.play()
-          : audioRef.current?.pause()
+      if (audioRef.current) {
+        if (evt.key === 'n') {
+          playNext()
+        } else if (evt.key === 'p') {
+          playPrevious()
+        } else if (evt.key === ' ') {
+          audioRef.current.paused
+            ? audioRef.current.play()
+            : audioRef.current.pause()
+        } else if (evt.key === 'ArrowRight') {
+          audioRef.current.currentTime = Math.min(
+            audioRef.current.currentTime + 5,
+            audioRef.current.duration
+          )
+        } else if (evt.key === 'ArrowLeft') {
+          audioRef.current.currentTime = Math.max(
+            audioRef.current.currentTime - 5,
+            0
+          )
+        }
       }
     }
     document.body.addEventListener('keyup', f)
+
+    let startY = 0
+    let startVolume = 0
+
+    let ts = (e) => {
+      if (e.touches.length === 1) {
+	audioRef.current.muted = false
+        startY = e.touches[0].clientY
+        startVolume = audioRef.current.volume
+      }
+    }
+    let tm = (e) => {
+      if (e.touches.length === 1) {
+        const currentY = e.touches[0].clientY
+        const deltaY = startY - currentY
+
+        // 滑动方向向上增加音量，向下减少音量
+        const deltaVolume = deltaY / 200 // 可调整灵敏度
+        let newVolume = startVolume + deltaVolume
+
+        // 限制音量在 0~1 之间
+        newVolume = Math.max(0, Math.min(1, newVolume))
+        audioRef.current.volume = newVolume
+
+        // 可选：防止滚动页面
+        e.preventDefault()
+        console.log(audioRef.current?.muted, audioRef.current?.volume)
+        console.log(audioRef.current)
+      }
+    }
+    document.addEventListener('touchstart', ts)
+    document.addEventListener('touchmove', tm)
     return () => {
       document.body.removeEventListener('keyup', f)
+      document.removeEventListener('touchstart', ts)
+      document.removeEventListener('touchmove', tm)
     }
   }, [audioRef.current, setIsPlaying])
 
@@ -250,10 +299,10 @@ export const Player = ({}: PlayerProps) => {
       className="player__container"
       onClick={(evt) => {
         if (['player__container', 'player'].includes(evt.target.className))
-          if (isPlaying) {
-            audioRef.current?.pause()
-          } else {
+          if (audioRef.current?.paused) {
             audioRef.current?.play()
+          } else {
+            audioRef.current?.pause()
           }
         // debugger
       }}
@@ -276,7 +325,8 @@ export const Player = ({}: PlayerProps) => {
       <div className="player">
         <div className="video">
           <video
-            // controls
+            playsinline
+            webkit-playsinline
             ref={audioRef}
             crossOrigin="anonymous"
             onEnded={onEnded}
