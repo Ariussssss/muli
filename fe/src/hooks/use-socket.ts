@@ -50,7 +50,7 @@ export const useSocket = ({
       socketRef.current?.emit('heartbeat', msg)
       heartbeatInterval.current = setInterval(() => {
         if (socketRef.current?.connected) {
-          socketRef.current?.emit('heartbeat', {})
+          socketRef.current?.emit('heartbeat', msg)
         }
       }, 10 * 1000)
     }

@@ -96,8 +96,12 @@ export const useInitPlaylist = () => {
   )
 
   useEffect(() => {
-    heartbeat({ song: currentSong })
-  }, [currentSong])
+    if (isPlaying) {
+      heartbeat({ song: currentSong })
+    } else {
+      heartbeat({ })
+    }
+  }, [currentSong, isPlaying])
 
   useEffect(() => {
     let { device } = last

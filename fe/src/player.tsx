@@ -298,7 +298,8 @@ export const Player = ({}: PlayerProps) => {
     <div
       className="player__container"
       onClick={(evt) => {
-        if (['player__container', 'player'].includes(evt.target.className))
+	debugger
+        if (['player__container', 'player'].includes(evt.target.className) || evt.target.tagName === 'VIDEO')
           if (audioRef.current?.paused) {
             audioRef.current?.play()
           } else {

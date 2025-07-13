@@ -3,16 +3,16 @@
 # @Email: arius@qq.com
 # @Date:   2025-06-26
 import json
-import mimetypes
 import os
 import sqlite3
 import sys
 import time
 import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event, Thread
 
-from flask import Flask, Response, request, send_file, send_from_directory
+from flask import Flask, Response, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
@@ -77,43 +77,53 @@ def stream_file(filename):
         return "File not found", 404
 
     file_size = os.path.getsize(file_path)
-    content_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
-    range_header = request.headers.get('Range', None)
-    logger.debug(range_header)
+    file_ext = Path(filename).suffix.lower()
 
-    start, end = 0, file_size - 1
+    range_header = request.headers.get('Range')
+    start, end = 0, None
 
     if range_header:
-        match = range_header.strip().lower().replace('bytes=', '').split('-')
-        try:
-            start = int(match[0])
-            if match[1]:
-                end = int(match[1])
-        except (IndexError, ValueError):
-            return Response("Invalid Range", status=416)
+        ranges = range_header.replace('bytes=', '').split('-')
+        start = int(ranges[0])
+        if ranges[1]:
+            end = int(ranges[1])
 
+    content_type = 'application/octet-stream'
+    if file_ext == '.mp4':
+        content_type = 'video/mp4'
+    elif file_ext == '.webm':
+        content_type = 'video/webm'
+    elif file_ext == '.mp3':
+        content_type = 'audio/mpeg'
+
+    if end is None:
+        end = min(start + CHUNK_SIZE, file_size - 1)
+    else:
         end = min(end, file_size - 1)
 
-        length = end - start + 1
-        with open(file_path, 'rb') as f:
-            f.seek(start)
-            data = f.read(length)
+    length = end - start + 1
 
-        response = Response(data, 206, mimetype=content_type, direct_passthrough=True)
-        response.headers.add('Content-Range', f'bytes {start}-{end}/{file_size}')
-        response.headers.add('Accept-Ranges', 'bytes')
-        response.headers.add('Content-Length', str(length))
-        # logger.debug(response.headers)
-        return response
+    with open(file_path, 'rb') as f:
+        f.seek(start)
+        data = f.read(length)
 
-    # No Range: return full file
-    return Response(open(file_path, 'rb'), mimetype=content_type)
+    response = Response(
+        data,
+        206,
+        mimetype=content_type,
+        direct_passthrough=True,
+    )
+
+    response.headers.add('Content-Range', f'bytes {start}-{end}/{file_size}')
+    response.headers.add('Accept-Ranges', 'bytes')
+    response.headers.add('Content-Length', str(length))
+
+    return response
 
 
 @app.route('/media/<path:filename>')
 def get_media_info(filename):
     file_path = os.path.join(SONG_DIR, filename)
-    # file_path = os.path.join('/', filename)
 
     if not os.path.exists(file_path):
         return "File not found", 404
@@ -197,7 +207,12 @@ def handle_heartbeat(message=''):
 # API endpoint to get connected devices
 @app.route('/api/connected_devices', methods=['GET'])
 def get_connected_devices():
-    return {'devices': connected_clients}
+    print(connected_clients)
+    return {
+        'devices': {
+            k: {**c, 'datetime': datetime.fromtimestamp(int(c['last_active']))} for k, c in connected_clients.items()
+        }
+    }
 
 
 # API endpoint to send signal to specific devices
