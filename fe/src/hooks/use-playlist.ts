@@ -11,6 +11,7 @@ import { useLocal } from './use-local'
 import { useSocket } from './use-socket'
 import { Socket } from 'socket.io-client'
 import { getTag } from '../utils'
+import { SERVER_HOST } from '../const'
 
 export enum PLAYMODE {
   NORMAL,
@@ -121,7 +122,7 @@ export const useInitPlaylist = () => {
 
     /* if (true) { */
     if (current - (lastDownload?.timestamp ?? 0) > 1000 * 3600 * 24) {
-      fetch('http://192.168.1.13:3210/api/all').then((e) => {
+      fetch(`${SERVER_HOST}/api/all`).then((e) => {
         e.json().then((res) => {
           if (res?.['downloads']) {
             setAllDownloads(shuffleArray(res['downloads']))
